@@ -1,0 +1,14 @@
+node_modules/
+scratch/
+*.har
+e2e-report.json
+e2e-top.png
+*.log
+_tmp-*
+_probe-*
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.pem
+*.key

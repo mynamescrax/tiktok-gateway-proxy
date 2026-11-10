@@ -1,0 +1,34 @@
+{
+  "name": "tiktokproxy",
+  "version": "1.0.0",
+  "description": "Gateway proxy that loads www.tiktok.com inside a same-origin iframe so a network filter that blocks TikTok domains sees only this host. See FINDINGS.md for the HAR analysis behind the design.",
+  "main": "server.mjs",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test cookies.test.mjs",
+    "verify": "node verify.js",
+    "verify:ws": "node verify-ws.js",
+    "test:e2e": "node e2e.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "proxy",
+    "gateway",
+    "tiktok",
+    "web-proxy",
+    "reverse-proxy",
+    "concept"
+  ],
+  "author": "mynamescrax",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mynamescrax/tiktok-gateway-proxy.git"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.10.0"
+  }
+}

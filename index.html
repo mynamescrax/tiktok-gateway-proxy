@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TikTok proxy PoC</title>
+<style>
+  html,body{height:100%;margin:0;font-family:system-ui,sans-serif;background:#111;color:#eee}
+  #bar{display:flex;gap:8px;padding:8px;background:#1c1c1c;align-items:center}
+  #url{flex:1;padding:8px;border-radius:6px;border:1px solid #444;background:#222;color:#eee}
+  button{padding:8px 14px;border-radius:6px;border:0;background:#fe2c55;color:#fff;cursor:pointer}
+  #frame{width:100%;height:calc(100% - 52px);border:0;background:#000}
+  small{color:#999}
+</style>
+</head>
+<body>
+<div id="bar">
+  <input id="url" value="https://www.tiktok.com/foryou?lang=en" />
+  <button id="go">Go</button>
+  <small>via /tt gateway</small>
+</div>
+<iframe id="frame" title="tiktok proxy" sandbox="allow-scripts allow-same-origin allow-forms" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+<script>
+  var frame = document.getElementById('frame');
+  var input = document.getElementById('url');
+  function go() {
+    var u = input.value.trim() || 'https://www.tiktok.com/foryou?lang=en';
+    // reset the retry counter on manual navigation
+    try { sessionStorage.removeItem('tt-retries'); } catch (e) {}
+    frame.src = '/tt?url=' + encodeURIComponent(u) + '&referer=' + encodeURIComponent(u) + '&tt=1';
+  }
+  document.getElementById('go').onclick = go;
+  // The feed API flakes occasionally at the transport level (TikTok's
+  // "Something went wrong" error page). Retry a couple of times, counting
+  // across reloads so a persistent upstream failure cannot reload forever.
+  //
+  // Detection details:
+  //  - the string "Something went wrong" also lives in the app's i18n bundle
+  //    inside an inline <script> on EVERY page, so textContent matches
+  //    immediately and reloads a healthy page. Use visible text (innerText).
+  //  - only the For You feed is retried. Profile/search/watch pages legitimately
+  //    have no <video> and show their own error cards; reloading them just
+  //    re-downloads 400 KB and aborts every in-flight API call.
+  var retries = 0;
+  try { retries = Number(sessionStorage.getItem('tt-retries') || 0) || 0; } catch (e) {}
+
+  function onFeed(doc) {
+    try {
+      var win = doc.defaultView || {};
+      var target = win.__TT_TARGET__ || (win.location && win.location.href) || '';
+      var path = new URL(target, 'https://www.tiktok.com').pathname;
+      return path === '/' || path === '/foryou';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function feedFailed(doc) {
+    try {
+      if (!doc || !doc.body || doc.readyState !== 'complete') return false;
+      if (!onFeed(doc)) return false;
+      if (doc.querySelector('video')) return false;
+      return (doc.body.innerText || '').indexOf('Something went wrong') !== -1;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  setInterval(function () {
+    try {
+      var doc = frame.contentDocument;
+      if (!doc) return;
+      if (!feedFailed(doc)) {
+        // A rendered feed means the failure counter starts over.
+        if (retries) {
+          retries = 0;
+          try { sessionStorage.removeItem('tt-retries'); } catch (e) {}
+        }
+        return;
+      }
+      if (retries >= 2) return;
+      retries++;
+      try { sessionStorage.setItem('tt-retries', String(retries)); } catch (e) {}
+      frame.contentWindow.location.reload();
+    } catch (e) { /* cross-origin during navigation; ignore */ }
+  }, 3000);
+  go();
+</script>
+</body>
+</html>
